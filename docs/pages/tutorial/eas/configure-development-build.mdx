@@ -1,205 +1,206 @@
----
-title: Configure a development build in cloud
-sidebar_title: Configure development build
-description: Learn how to configure a development build for a project using EAS Build.
----
+// Jogo estilo Mario Bros com Macio e Camila
+// Usando React Native + React Native Game Engine
 
-import { Collapsible } from '~/ui/components/Collapsible';
-import { ContentSpotlight } from '~/ui/components/ContentSpotlight';
-import { ProgressTracker } from '~/ui/components/ProgressTracker';
-import { Terminal } from '~/ui/components/Snippet';
-import { Step } from '~/ui/components/Step';
-import { CODE } from '~/ui/components/Text';
-import { VideoBoxLink } from '~/ui/components/VideoBoxLink';
+import React, { useState, useRef, useEffect } from 'react';
+import { View, Text, StyleSheet, Dimensions, TouchableOpacity } from 'react-native';
+import { GameEngine } from 'react-native-game-engine';
+import Sound from 'react-native-sound';
 
-In this chapter, we'll set up and configure a development build with EAS for our example app.
+const { width, height } = Dimensions.get('window');
 
-<VideoBoxLink videoId="uQCE9zl3dXU" title="Watch: How to configure a development build" />
+const Box = ({ position, color }) => {
+  return (
+    <View
+      style={{
+        position: 'absolute',
+        width: 50,
+        height: 50,
+        backgroundColor: color,
+        left: position[0],
+        top: position[1],
+      }}
+    />
+  );
+};
 
----
+const Obstacle = ({ position }) => {
+  return (
+    <View
+      style={{
+        position: 'absolute',
+        width: 50,
+        height: 50,
+        backgroundColor: 'brown',
+        left: position[0],
+        top: position[1],
+      }}
+    />
+  );
+};
 
-## Understanding development builds
+const gravity = 3;
+const jumpForce = -30;
+const screenBottom = height - 100;
 
-Let's start by learning about what are development builds and why we need them.
+const createLevel = (level) => {
+  const baseObstacles = [
+    { key: 'obst1', position: [300, screenBottom] },
+    { key: 'obst2', position: [600, screenBottom] },
+  ];
 
-A [development build](/develop/development-builds/introduction/) is a debug version of our project. It is optimized for quick iterations when creating an app. It contains the [`expo-dev-client`](/versions/latest/sdk/dev-client/) library, which offers a robust and complete development environment. This setup allows us to integrate any native library or change code inside the [native directories](/workflow/overview/#android-and-ios-native-projects) as required.
-
-### Key highlights
-
-> **Note:** If you are familiar with [Expo Go](/get-started/expo-go/), think of a development build as a customizable version of Expo Go that is unique to the requirements of a project.
-
-| Feature                           | Development Builds                                                                                                                             | Expo Go                                                                                              |
-| --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| **Development phase**             | Offers web-like iteration speed for mobile app development.                                                                                    | Allows for quick iteration and testing of Expo SDK projects using the client app.                    |
-| **Collaboration**                 | Facilitates team testing with shared native runtime.                                                                                           | Easy project sharing via QR codes on a device.                                                       |
-| **Third-party libraries support** | Full support for any [third-party library](/workflow/using-libraries/#third-party-libraries), including those that require custom native code. | Limited to libraries within the Expo SDK, not suitable for custom native dependencies.               |
-| **Customization**                 | Extensive customization with [config plugins](/config-plugins/introduction/) and direct access to native code.                                 | Limited customization with a focus on Expo SDK capabilities without direct native code modification. |
-| **Intended use**                  | Ideal for full-fledged app development aimed at store deployment, offering a complete development environment and tools.                       | Ideal for learning, prototyping, and experimenting. Not recommended for production apps.             |
-
-<Step label="1">
-
-## Install expo-dev-client library
-
-To initialize our project for a development build, let's [`cd`](https://developer.mozilla.org/en-US/docs/Learn/Tools_and_testing/Understanding_client-side_tools/Command_line#basic_built-in_terminal_commands) inside our project directory and run the following command to install the library:
-
-<Terminal cmd={['$ npx expo install expo-dev-client']} />
-
-### Start the development server
-
-Run the `npx expo start` to start the [development server](/get-started/start-developing/#start-a-development-server):
-
-<Terminal cmd={['$ npx expo start']} />
-
-This command starts the metro bundler. In the terminal window, we see the QR code followed by the `Metro waiting on...` and a manifest URL:
-
-<ContentSpotlight
-  alt="Running development server"
-  src="/static/images/tutorial/eas/development-server.png"
-  className="max-w-[600px]"
-/>
-
-Let's notice the changes installing the `expo-dev-client` library:
-
-- The manifest URL contains `expo-development-client` along with the app scheme
-- The development server now operates for a development build (instead of Expo Go).
-
-Since we do not have a development build installed on one of our devices or an emulator/simulator, we can't run our project yet.
-
-</Step>
-
-<Step label="2">
-
-## Initialize a development build
-
-### Install EAS CLI
-
-We need to install the EAS Command Line Interface (CLI) tool as a global dependency on our local machine. Run the following command:
-
-<Terminal cmd={['$ npm install -g eas-cli']} />
-
-### Log in or sign up for an Expo account
-
-> If you have an Expo account and are signed in using Expo CLI, skip this step. If you don't have an Expo account, [sign up here](https://expo.dev/signup) and proceed with the login command described below.
-
-To log in, run the following command:
-
-<Terminal cmd={['$ eas login']} />
-
-This command asks for our Expo account email or username and password to complete the login.
-
-### Initialize and link the project to EAS
-
-For any new project, the first step is to initialize and link it to the EAS servers. Run the following command:
-
-<Terminal cmd={['$ eas init']} />
-
-On running, this command:
-
-- Requests verification of the account owner by entering our Expo account credentials and asks if we want to create a new EAS project:
-
-<Terminal
-  cmd={[
-    '# Output after running eas init',
-    '✔ Which account should own this project? > your-username',
-    '✔ Would you like to create a project for @your-username/sticker-smash? … yes',
-    '✔ Created @your-username/sticker-smash',
-    '✔ Project successfully linked (ID: XXXX-XX-XX-XXXX) (modified app.json)',
-  ]}
-/>
-
-- Creates EAS project and provides a link to that project which we can open in the Expo dashboard:
-
-<ContentSpotlight
-  alt="New project in Expo dashboard"
-  src="/static/images/tutorial/eas/new-project.png"
-/>
-
-- Generates a unique `projectId` and links this EAS project to the example app on our development machine.
-- Modifies **app.json** to include [`extra.eas.projectId`](/versions/latest/sdk/constants/#easconfig) and updates its value with the unique ID created.
-
-<Collapsible summary={<>What is <CODE>projectId</CODE> in app.json?</>}>
-
-When `eas init` runs, it associates a unique identifier for our project in **app.json** under `extra.eas.projectId`. The value of this property is used to identify our project on EAS servers.
-
-```json
-{
-  "extra": {
-    "eas": {
-      "projectId": "0cd3da2d-xxx-xxx-xxx-xxxxxxxxxx"
-    }
+  if (level === 2) {
+    baseObstacles.push({ key: 'obst3', position: [900, screenBottom] });
+  } else if (level === 3) {
+    baseObstacles.push(
+      { key: 'obst3', position: [900, screenBottom] },
+      { key: 'obst4', position: [1200, screenBottom] }
+    );
   }
-}
-```
 
-</Collapsible>
+  const obstacles = {};
+  baseObstacles.forEach(ob => {
+    obstacles[ob.key] = { position: ob.position, renderer: <Obstacle /> };
+  });
 
-</Step>
+  return {
+    player1: { position: [50, screenBottom], velocityY: 0, renderer: <Box color="blue" /> },
+    player2: { position: [120, screenBottom], velocityY: 0, renderer: <Box color="pink" /> },
+    ...obstacles
+  };
+};
 
-<Step label="3">
+const MoveSystem = (entities, { touches, dispatch }) => {
+  const speed = 2;
 
-## Configure project for EAS Build
+  let player1 = entities.player1;
+  let player2 = entities.player2;
 
-To set up our project for EAS Build, run the following command:
+  player1.position[0] += speed;
+  player2.position[0] += speed;
 
-<Terminal cmd={['$ eas build:configure']} />
+  player1.velocityY += gravity;
+  player2.velocityY += gravity;
 
-On running, this command:
+  player1.position[1] += player1.velocityY;
+  player2.position[1] += player2.velocityY;
 
-- Prompts to select a platform: **Android**, **iOS**, or **All**. Since we are creating Android and iOS apps, let's select **All**.
-- Creates **eas.json** in the root of our project's directory with the following configuration:
-
-```json eas.json
-{
-  "cli": {
-    "version": ">= 14.2.0",
-    "appVersionSource": "remote"
-  },
-  "build": {
-    "development": {
-      "developmentClient": true,
-      "distribution": "internal"
-    },
-    "preview": {
-      "distribution": "internal"
-    },
-    "production": {
-      "autoIncrement": true
-    }
-  },
-  "submit": {
-    "production": {}
+  if (player1.position[1] > screenBottom) {
+    player1.position[1] = screenBottom;
+    player1.velocityY = 0;
   }
+  if (player2.position[1] > screenBottom) {
+    player2.position[1] = screenBottom;
+    player2.velocityY = 0;
+  }
+
+  touches.filter(t => t.type === 'press').forEach(touch => {
+    if (touch.event.pageX < width / 2 && player1.position[1] >= screenBottom) {
+      player1.velocityY = jumpForce;
+    }
+    if (touch.event.pageX >= width / 2 && player2.position[1] >= screenBottom) {
+      player2.velocityY = jumpForce;
+    }
+  });
+
+  if (player1.position[0] > width * 2 || player2.position[0] > width * 2) {
+    dispatch({ type: 'next-level' });
+  }
+
+  return entities;
+};
+
+export default function App() {
+  const [running, setRunning] = useState(true);
+  const [level, setLevel] = useState(1);
+  const [entities, setEntities] = useState(createLevel(1));
+  const [points, setPoints] = useState(0);
+  const soundRef = useRef(null);
+
+  useEffect(() => {
+    Sound.setCategory('Playback');
+    const sound = new Sound('background.mp3', Sound.MAIN_BUNDLE, (error) => {
+      if (!error) {
+        sound.setNumberOfLoops(-1);
+        sound.play();
+        soundRef.current = sound;
+      }
+    });
+
+    return () => {
+      if (soundRef.current) soundRef.current.release();
+    };
+  }, []);
+
+  const handleEvent = (e) => {
+    if (e.type === 'next-level') {
+      const next = level + 1 > 3 ? 1 : level + 1;
+      setLevel(next);
+      setEntities(createLevel(next));
+      setPoints(prev => prev + 10);
+    }
+  };
+
+  return (
+    <View style={styles.container}>
+      <Text style={styles.title}>Fase {level} - Macio & Camila</Text>
+      <Text style={styles.points}>Pontos: {points}</Text>
+
+      <GameEngine
+        style={styles.gameContainer}
+        running={running}
+        systems={[MoveSystem]}
+        onEvent={handleEvent}
+        entities={entities}
+      />
+
+      <TouchableOpacity onPress={() => setRunning(!running)} style={styles.button}>
+        <Text style={styles.buttonText}>{running ? 'Pausar' : 'Iniciar'}</Text>
+      </TouchableOpacity>
+
+      <Text style={styles.instructions}>Toque no lado esquerdo para Macio pular e no direito para Camila pular</Text>
+    </View>
+  );
 }
-```
 
-This is the default configuration for **eas.json** in a new project. It does two things:
-
-- Defines the current EAS CLI version.
-- Adds three [build profiles](/build/eas-json/#build-profiles): `development`, `preview`, and `production`.
-
-</Step>
-
-<Collapsible summary="Explore development profile further">
-
-**eas.json** is a collection of different build profiles. Each profile is tailored with distinct configurations to produce specific build types. These profiles can also include platform-specific settings for Android or iOS.
-
-Currently, our focus is on the `development` profile, which includes the following configuration:
-
-- [`developmentClient`](/eas/json/#developmentclient): Enabled (`true`) for creating a debug build. It loads the app using the `expo-dev-client` library, which provides development tools and generates a build artifact for device or emulator/simulator installation and allows using the app for local development as it supports updating the JavaScript on the fly.
-- [`distribution`](/eas/json/#distribution): Configured as `internal` to indicate that we want to share the build internally (instead of uploading it on app stores).
-
-> **Note**: Builds offer extensive customization options, including platform-specific settings and the ability to extend configurations across different build profiles. Learn more about [customizing build profiles](/build/eas-json/#build-profiles).
-
-</Collapsible>
-
-## Summary
-
-<ProgressTracker
-  currentChapterIndex={0}
-  name="EAS_TUTORIAL"
-  summary="
-We successfully used the EAS CLI to initialize, and configure our project, link it to EAS servers, and prepare a development build."
-  nextChapterDescription="In the next chapter, let's create a development build for Android, install it on a device and an emulator, and get it running with the development server."
-  nextChapterTitle="Create and run a cloud build for Android"
-  nextChapterLink="/tutorial/eas/android-development-build/"
-/>
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#a3d9ff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginTop: 40,
+  },
+  points: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#2e2e2e',
+    marginTop: 10,
+  },
+  gameContainer: {
+    width: width,
+    height: height * 0.6,
+    backgroundColor: '#e0f7fa',
+    marginTop: 20,
+  },
+  button: {
+    marginTop: 20,
+    padding: 10,
+    backgroundColor: '#0077b6',
+    borderRadius: 8,
+  },
+  buttonText: {
+    color: 'white',
+    fontSize: 18,
+  },
+  instructions: {
+    marginTop: 10,
+    fontSize: 16,
+    color: '#333',
+    paddingHorizontal: 20,
+    textAlign: 'center',
+  },
+});
